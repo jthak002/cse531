@@ -29,16 +29,18 @@ class CResponse(_message.Message):
     def __init__(self, cust_id: _Optional[int] = ..., tran_id: _Optional[int] = ..., interface: _Optional[str] = ..., result: _Optional[str] = ...) -> None: ...
 
 class BTransaction(_message.Message):
-    __slots__ = ["cust_id", "tran_id", "interface", "money"]
+    __slots__ = ["cust_id", "tran_id", "src_branch_id", "interface", "money"]
     CUST_ID_FIELD_NUMBER: _ClassVar[int]
     TRAN_ID_FIELD_NUMBER: _ClassVar[int]
+    SRC_BRANCH_ID_FIELD_NUMBER: _ClassVar[int]
     INTERFACE_FIELD_NUMBER: _ClassVar[int]
     MONEY_FIELD_NUMBER: _ClassVar[int]
     cust_id: int
     tran_id: int
+    src_branch_id: int
     interface: str
     money: float
-    def __init__(self, cust_id: _Optional[int] = ..., tran_id: _Optional[int] = ..., interface: _Optional[str] = ..., money: _Optional[float] = ...) -> None: ...
+    def __init__(self, cust_id: _Optional[int] = ..., tran_id: _Optional[int] = ..., src_branch_id: _Optional[int] = ..., interface: _Optional[str] = ..., money: _Optional[float] = ...) -> None: ...
 
 class BResponse(_message.Message):
     __slots__ = ["cust_id", "tran_id", "interface", "money", "status"]

@@ -13,7 +13,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rexample.proto\x12\x07\x65xample\"R\n\x0c\x43Transaction\x12\x0f\n\x07\x63ust_id\x18\x01 \x01(\x05\x12\x0f\n\x07tran_id\x18\x02 \x01(\x05\x12\x11\n\tinterface\x18\x03 \x01(\t\x12\r\n\x05money\x18\x04 \x01(\x02\"P\n\tCResponse\x12\x0f\n\x07\x63ust_id\x18\x01 \x01(\x05\x12\x0f\n\x07tran_id\x18\x02 \x01(\x05\x12\x11\n\tinterface\x18\x03 \x01(\t\x12\x0e\n\x06result\x18\x04 \x01(\t\"R\n\x0c\x42Transaction\x12\x0f\n\x07\x63ust_id\x18\x01 \x01(\x05\x12\x0f\n\x07tran_id\x18\x02 \x01(\x05\x12\x11\n\tinterface\x18\x03 \x01(\t\x12\r\n\x05money\x18\x04 \x01(\x02\"_\n\tBResponse\x12\x0f\n\x07\x63ust_id\x18\x01 \x01(\x05\x12\x0f\n\x07tran_id\x18\x02 \x01(\x05\x12\x11\n\tinterface\x18\x03 \x01(\t\x12\r\n\x05money\x18\x04 \x01(\x02\x12\x0e\n\x06status\x18\x05 \x01(\x08\x32\xc1\x02\n\x13\x43ustomerTransaction\x12\x34\n\x05Query\x12\x15.example.CTransaction\x1a\x12.example.CResponse\"\x00\x12\x36\n\x07\x44\x65posit\x12\x15.example.CTransaction\x1a\x12.example.CResponse\"\x00\x12\x37\n\x08Withdraw\x12\x15.example.CTransaction\x1a\x12.example.CResponse\"\x00\x12@\n\x11Propagate_Deposit\x12\x15.example.BTransaction\x1a\x12.example.BResponse\"\x00\x12\x41\n\x12Propagate_Withdraw\x12\x15.example.BTransaction\x1a\x12.example.BResponse\"\x00\x42+\n\x18io.grpc.examples.exampleB\x07\x45xampleP\x01\xa2\x02\x03\x45XMb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rexample.proto\x12\x07\x65xample\"R\n\x0c\x43Transaction\x12\x0f\n\x07\x63ust_id\x18\x01 \x01(\x05\x12\x0f\n\x07tran_id\x18\x02 \x01(\x05\x12\x11\n\tinterface\x18\x03 \x01(\t\x12\r\n\x05money\x18\x04 \x01(\x02\"P\n\tCResponse\x12\x0f\n\x07\x63ust_id\x18\x01 \x01(\x05\x12\x0f\n\x07tran_id\x18\x02 \x01(\x05\x12\x11\n\tinterface\x18\x03 \x01(\t\x12\x0e\n\x06result\x18\x04 \x01(\t\"i\n\x0c\x42Transaction\x12\x0f\n\x07\x63ust_id\x18\x01 \x01(\x05\x12\x0f\n\x07tran_id\x18\x02 \x01(\x05\x12\x15\n\rsrc_branch_id\x18\x03 \x01(\x05\x12\x11\n\tinterface\x18\x04 \x01(\t\x12\r\n\x05money\x18\x05 \x01(\x02\"_\n\tBResponse\x12\x0f\n\x07\x63ust_id\x18\x01 \x01(\x05\x12\x0f\n\x07tran_id\x18\x02 \x01(\x05\x12\x11\n\tinterface\x18\x03 \x01(\t\x12\r\n\x05money\x18\x04 \x01(\x02\x12\x0e\n\x06status\x18\x05 \x01(\x08\x32\xc1\x02\n\x13\x43ustomerTransaction\x12\x34\n\x05Query\x12\x15.example.CTransaction\x1a\x12.example.CResponse\"\x00\x12\x36\n\x07\x44\x65posit\x12\x15.example.CTransaction\x1a\x12.example.CResponse\"\x00\x12\x37\n\x08Withdraw\x12\x15.example.CTransaction\x1a\x12.example.CResponse\"\x00\x12@\n\x11Propagate_Deposit\x12\x15.example.BTransaction\x1a\x12.example.BResponse\"\x00\x12\x41\n\x12Propagate_Withdraw\x12\x15.example.BTransaction\x1a\x12.example.BResponse\"\x00\x42+\n\x18io.grpc.examples.exampleB\x07\x45xampleP\x01\xa2\x02\x03\x45XMb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -26,9 +26,9 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _globals['_CRESPONSE']._serialized_start=110
   _globals['_CRESPONSE']._serialized_end=190
   _globals['_BTRANSACTION']._serialized_start=192
-  _globals['_BTRANSACTION']._serialized_end=274
-  _globals['_BRESPONSE']._serialized_start=276
-  _globals['_BRESPONSE']._serialized_end=371
-  _globals['_CUSTOMERTRANSACTION']._serialized_start=374
-  _globals['_CUSTOMERTRANSACTION']._serialized_end=695
+  _globals['_BTRANSACTION']._serialized_end=297
+  _globals['_BRESPONSE']._serialized_start=299
+  _globals['_BRESPONSE']._serialized_end=394
+  _globals['_CUSTOMERTRANSACTION']._serialized_start=397
+  _globals['_CUSTOMERTRANSACTION']._serialized_end=718
 # @@protoc_insertion_point(module_scope)
