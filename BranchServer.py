@@ -1,17 +1,9 @@
 from concurrent import futures
-
-
 import grpc
 import example_pb2
 import example_pb2_grpc
 
 import logging
-
-class CustomerToBankGRPC(example_pb2_grpc.CustomerTransactionServicer):
-    def PerformCustomerTransaction(self, request, context):
-        logging.info(f"Received a CUSTOMER request to {request.interface} for cust_id {request.cust_id} with "
-                     f"tran_id {request.tran_id} for amount {request.money}")
-        return example_pb2.CResponse(cust_id=request.cust_id, tran_id=request.tran_id, interface=request.interface, result='success')
 
 def serve():
     port = "50051"

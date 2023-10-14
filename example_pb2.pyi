@@ -27,3 +27,29 @@ class CResponse(_message.Message):
     interface: str
     result: str
     def __init__(self, cust_id: _Optional[int] = ..., tran_id: _Optional[int] = ..., interface: _Optional[str] = ..., result: _Optional[str] = ...) -> None: ...
+
+class BTransaction(_message.Message):
+    __slots__ = ["cust_id", "tran_id", "interface", "money"]
+    CUST_ID_FIELD_NUMBER: _ClassVar[int]
+    TRAN_ID_FIELD_NUMBER: _ClassVar[int]
+    INTERFACE_FIELD_NUMBER: _ClassVar[int]
+    MONEY_FIELD_NUMBER: _ClassVar[int]
+    cust_id: int
+    tran_id: int
+    interface: str
+    money: float
+    def __init__(self, cust_id: _Optional[int] = ..., tran_id: _Optional[int] = ..., interface: _Optional[str] = ..., money: _Optional[float] = ...) -> None: ...
+
+class BResponse(_message.Message):
+    __slots__ = ["cust_id", "tran_id", "interface", "money", "status"]
+    CUST_ID_FIELD_NUMBER: _ClassVar[int]
+    TRAN_ID_FIELD_NUMBER: _ClassVar[int]
+    INTERFACE_FIELD_NUMBER: _ClassVar[int]
+    MONEY_FIELD_NUMBER: _ClassVar[int]
+    STATUS_FIELD_NUMBER: _ClassVar[int]
+    cust_id: int
+    tran_id: int
+    interface: str
+    money: float
+    status: bool
+    def __init__(self, cust_id: _Optional[int] = ..., tran_id: _Optional[int] = ..., interface: _Optional[str] = ..., money: _Optional[float] = ..., status: bool = ...) -> None: ...

@@ -13,8 +13,12 @@ service CustomerTransaction {
   //
   // Sends a CTransaction Type
   //
-  // A CResponse is returned with the new balance of the account.
-    rpc PerformCustomerTransaction(CTransaction) returns(CResponse) {}
+  // A CResponse is returned with with success or failure or balance of the account.
+    rpc Query(CTransaction) returns(CResponse) {}
+    rpc Deposit(CTransaction) returns(CResponse) {}
+    rpc Withdraw(CTransaction) returns(CResponse) {}
+    rpc Propagate_Deposit(BTransaction) returns(BResponse) {}
+    rpc Propagate_Withdraw(BTransaction) returns(BResponse) {}
 }
 
 message CTransaction {
@@ -31,30 +35,18 @@ message CResponse {
     string result = 4;
 }
 
-/*
-//Interface for Bank To Bank Transaction
-service BankTransaction {
-  // A simple RPC.
-  //
-  // Sends a BTransaction Type
-  //
-  // A BResponse is returned with the new balance of the account.
-    rpc PerformBankTransaction(BTransaction) returns(BResponse) {}
-}
-
 
 message BTransaction {
-    int cust_id = 1;
-    int tran_id = 2;
+    int32 cust_id = 1;
+    int32 tran_id = 2;
     string interface = 3;
-    int32 money = 4;
+    float money = 4;
 }
 
-message BTransaction {
-    int cust_id = 1;
-    int tran_id = 2;
+message BResponse {
+    int32 cust_id = 1;
+    int32 tran_id = 2;
     string interface = 3;
-    int32 money = 4;
+    float money = 4;
     bool status = 5;
 }
-*/

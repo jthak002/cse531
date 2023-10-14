@@ -15,10 +15,30 @@ class CustomerTransactionStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.PerformCustomerTransaction = channel.unary_unary(
-                '/example.CustomerTransaction/PerformCustomerTransaction',
+        self.Query = channel.unary_unary(
+                '/example.CustomerTransaction/Query',
                 request_serializer=example__pb2.CTransaction.SerializeToString,
                 response_deserializer=example__pb2.CResponse.FromString,
+                )
+        self.Deposit = channel.unary_unary(
+                '/example.CustomerTransaction/Deposit',
+                request_serializer=example__pb2.CTransaction.SerializeToString,
+                response_deserializer=example__pb2.CResponse.FromString,
+                )
+        self.Withdraw = channel.unary_unary(
+                '/example.CustomerTransaction/Withdraw',
+                request_serializer=example__pb2.CTransaction.SerializeToString,
+                response_deserializer=example__pb2.CResponse.FromString,
+                )
+        self.Propagate_Deposit = channel.unary_unary(
+                '/example.CustomerTransaction/Propagate_Deposit',
+                request_serializer=example__pb2.BTransaction.SerializeToString,
+                response_deserializer=example__pb2.BResponse.FromString,
+                )
+        self.Propagate_Withdraw = channel.unary_unary(
+                '/example.CustomerTransaction/Propagate_Withdraw',
+                request_serializer=example__pb2.BTransaction.SerializeToString,
+                response_deserializer=example__pb2.BResponse.FromString,
                 )
 
 
@@ -26,13 +46,37 @@ class CustomerTransactionServicer(object):
     """Interface for Customer To Bank Transaction
     """
 
-    def PerformCustomerTransaction(self, request, context):
+    def Query(self, request, context):
         """A simple RPC.
         
         Sends a CTransaction Type
         
-        A CResponse is returned with the new balance of the account.
+        A CResponse is returned with with success or failure or balance of the account.
         """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def Deposit(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def Withdraw(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def Propagate_Deposit(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def Propagate_Withdraw(self, request, context):
+        """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
@@ -40,10 +84,30 @@ class CustomerTransactionServicer(object):
 
 def add_CustomerTransactionServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'PerformCustomerTransaction': grpc.unary_unary_rpc_method_handler(
-                    servicer.PerformCustomerTransaction,
+            'Query': grpc.unary_unary_rpc_method_handler(
+                    servicer.Query,
                     request_deserializer=example__pb2.CTransaction.FromString,
                     response_serializer=example__pb2.CResponse.SerializeToString,
+            ),
+            'Deposit': grpc.unary_unary_rpc_method_handler(
+                    servicer.Deposit,
+                    request_deserializer=example__pb2.CTransaction.FromString,
+                    response_serializer=example__pb2.CResponse.SerializeToString,
+            ),
+            'Withdraw': grpc.unary_unary_rpc_method_handler(
+                    servicer.Withdraw,
+                    request_deserializer=example__pb2.CTransaction.FromString,
+                    response_serializer=example__pb2.CResponse.SerializeToString,
+            ),
+            'Propagate_Deposit': grpc.unary_unary_rpc_method_handler(
+                    servicer.Propagate_Deposit,
+                    request_deserializer=example__pb2.BTransaction.FromString,
+                    response_serializer=example__pb2.BResponse.SerializeToString,
+            ),
+            'Propagate_Withdraw': grpc.unary_unary_rpc_method_handler(
+                    servicer.Propagate_Withdraw,
+                    request_deserializer=example__pb2.BTransaction.FromString,
+                    response_serializer=example__pb2.BResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -57,7 +121,7 @@ class CustomerTransaction(object):
     """
 
     @staticmethod
-    def PerformCustomerTransaction(request,
+    def Query(request,
             target,
             options=(),
             channel_credentials=None,
@@ -67,8 +131,76 @@ class CustomerTransaction(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/example.CustomerTransaction/PerformCustomerTransaction',
+        return grpc.experimental.unary_unary(request, target, '/example.CustomerTransaction/Query',
             example__pb2.CTransaction.SerializeToString,
             example__pb2.CResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def Deposit(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/example.CustomerTransaction/Deposit',
+            example__pb2.CTransaction.SerializeToString,
+            example__pb2.CResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def Withdraw(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/example.CustomerTransaction/Withdraw',
+            example__pb2.CTransaction.SerializeToString,
+            example__pb2.CResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def Propagate_Deposit(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/example.CustomerTransaction/Propagate_Deposit',
+            example__pb2.BTransaction.SerializeToString,
+            example__pb2.BResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def Propagate_Withdraw(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/example.CustomerTransaction/Propagate_Withdraw',
+            example__pb2.BTransaction.SerializeToString,
+            example__pb2.BResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
