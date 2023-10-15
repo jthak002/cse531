@@ -13,7 +13,7 @@ handler = logging.StreamHandler()
 formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
 handler.setFormatter(formatter)
 logger = logging.getLogger()
-logger.setLevel(level=logging.DEBUG)
+logger.setLevel(level=logging.INFO)
 logger.addHandler(handler)
 logger = logging.getLogger()
 

@@ -9,16 +9,11 @@ logger = logging.getLogger(__name__)
 
 BASE_PORT = 50000
 
-class CustomerToBankGRPC(example_pb2_grpc.CustomerTransactionServicer):
-    def Query(self, request, context):
-        logging.info(f"Received a CUSTOMER request to {request.interface} for cust_id {request.cust_id} with "
-                     f"tran_id {request.tran_id} for amount {request.money}")
-        return example_pb2.CResponse(cust_id=request.cust_id, tran_id=request.tran_id, interface=request.interface, result='success')
-
 class Branch(example_pb2_grpc.CustomerTransactionServicer):
     id = 0
     balance = 0
-    branches = []
+    peer_branches = []
+    stubList = []
     server = None
     def __init__(self, id, balance, branches):
         # unique ID of the Branch
@@ -29,20 +24,12 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
         self.balance = balance
         logger.info(f"Initializing Branch with ID#{self.id} with balance: {self.balance}")
         # the list of process IDs of the branches
-        self.branches = branches
-        logger.info(f"Initializing Branch with ID#{self.id} with peer branches: {self.branches}")
+        self.peer_branches = branches
+        logger.info(f"Initializing Branch List with ID#{self.id} with peer branches: {self.peer_branches}")
         # the list of Client stubs to communicate with the branches
         self.stubList = []
-        # a list of received messages used for debugging purpose
-        self.recvMsg = []
-        # iterate the processID of the branches
-        # TODO: students are expected to store the processID of the branches
-        pass
-
-    def setup_stub_list(self):
-        logger.info(f"The stubs for BRANCH ID# {self.id} seem to be uninitialized. Creating now.")
         try:
-            for peer in self.branches:
+            for peer in self.peer_branches:
                 logger.debug(f"Setting up gRPC channel between {self.id} and {peer}")
                 channel = grpc.insecure_channel("localhost:"+str(50000+peer))
                 stub = example_pb2_grpc.CustomerTransactionStub(channel)
@@ -50,6 +37,54 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
         except Exception:
             logger.error("Encountered error while creating stubs from ")
             exit(1)
+        logger.info(f"Initializing Branch with ID#{self.id} with peer branches stubs {self.peer_branches}")
+        # a list of received messages used for debugging purpose
+        self.recvMsg = []
+        # iterate the processID of the branches
+        # TODO: students are expected to store the processID of the branches
+        pass
+
+    def send_btransaction_message(self, cust_id:int, tran_id:int, src_branch_id, interface:str, amount:float) -> bool:
+        """
+        Function to propagate deposit or withdraw from branch to peer branches
+        :param cust_id: customer id of the account - right now the same as the account
+        :param tran_id: transaction id of the account
+        :param src_branch_id: the id of the branch initiating the source transaction
+        :param interface: either PROPAGATE_DEPOSIT or PROPAGATE_WITHDRAW
+        :param amount: The amount to deposit or withdraw
+        :return: True if all nodes received the transaction properly, else False
+        """
+        for stub_dict in self.stubList:
+            logger.debug(f"SENDING BTransaction Message from {src_branch_id} to PEER_BANKID#{stub_dict.get('peer_id')} for "
+                        f"cust_id{cust_id} with tran_id{tran_id} for {interface} operation for amount{amount}")
+            if interface == "PROPAGATE_DEPOSIT":
+                response = stub_dict.get('stub').Propagate_Deposit(example_pb2.BTransaction(cust_id=cust_id,
+                                                                                        tran_id=tran_id,
+                                                                                        src_branch_id=self.id,
+                                                                                        interface=interface,
+                                                                                        money=amount))
+            elif interface == "PROPAGATE_WITHDRAW":
+                response = stub_dict.get('stub').Propagate_Withdraw(example_pb2.BTransaction(cust_id=cust_id,
+                                                                                            tran_id=tran_id,
+                                                                                            src_branch_id=self.id,
+                                                                                            interface=interface,
+                                                                                            money=amount))
+            else:
+                logger.critical("INVALID INTERFACE in Branch.send_btransaction_message() - exiting now")
+                exit(1)
+            if response.status:
+                # SANITY CHECK THAT PROPAGATION WENT SUCCESSFULLY
+                if self.balance == response.money:
+                    pass
+                else:
+                    logger.critical("self.balance DOES NOT MATCH response.money - ABORT")
+                logger.debug(f"SUCCESSFULLY SENT {interface} from {self.id} to {stub_dict.get('peer_id')}")
+            else:
+                logger.warning(f"FAILURE SENDING {interface} from {self.id} to {stub_dict.get('peer_id')}")
+                return response.status
+        return True
+
+
     # TODO: students are expected to process requests from both Client and Branch
     def MsgDelivery(self,request, context):
         pass
@@ -62,7 +97,7 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
         :param context: -
         :return: example_pb2.CResponse Object Type
         """
-        logging.info(f"Received a CUSTOMER request to {request.interface} for cust_id {request.cust_id} with "
+        logging.info(f">>> Received a CUSTOMER request to {request.interface} for cust_id {request.cust_id} with "
                      f"tran_id {request.tran_id}")
         balance_str = 'balance: ' + str(self.balance)
         logging.info(f"Returning a CUSTOMER response for {request.interface} for cust_id {request.cust_id} with "
@@ -78,17 +113,21 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
         :return: example_pb2.CResponse Object Type
         """
         deposit_amount = request.money
-        logging.info(f"Received a CUSTOMER request to {request.interface} for cust_id {request.cust_id} with "
+        logging.info(f">>> Received a CUSTOMER request to {request.interface} for cust_id {request.cust_id} with "
                      f"tran_id {request.tran_id}")
         self.balance += deposit_amount
         ###################################
         # CODE FOR PROPAGATING BALANCE HERE
-        propagate_status = True
+        propagate_status = self.send_btransaction_message(cust_id=request.cust_id, tran_id=request.tran_id,
+                                                          src_branch_id=self.id, interface='PROPAGATE_DEPOSIT',
+                                                          amount=request.money)
         ###################################
         if propagate_status:
-            logger.info(
+            logger.debug(
                 f"BRANCH with ID#{self.id} has the balance INCREASED by {request.money} To BALANCE {self.balance} "
                 f"via CUSTOMER DEPOSIT with tran_id: {request.tran_id}")
+        else:
+            logger.warning(f"DEPOSIT FAILED for ID#{self.id} with PROPAGATE DEPOSIT FAILURE")
         transaction_status:str = 'success' if propagate_status else 'failure'
 
         logging.info(f"Returning a CUSTOMER response for {request.interface} for cust_id {request.cust_id} with "
@@ -104,17 +143,21 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
         :return: example_pb2.CResponse Object Type
         """
         withdraw_amount = request.money
-        logging.info(f"Received a CUSTOMER request to {request.interface} for cust_id {request.cust_id} with "
+        logging.info(f">>> Received a CUSTOMER request to {request.interface} for cust_id {request.cust_id} with "
                      f"tran_id {request.tran_id}")
         self.balance -= withdraw_amount
         ###################################
         # CODE FOR PROPAGATING BALANCE HERE
-        propagate_status = True
+        propagate_status = self.send_btransaction_message(cust_id=request.cust_id, tran_id=request.tran_id,
+                                                          src_branch_id=self.id, interface='PROPAGATE_WITHDRAW',
+                                                          amount=request.money)
         ###################################
         if propagate_status:
-            logger.info(
+            logger.debug(
                 f"BRANCH with ID#{self.id} has the balance DECREASED by {request.money} To BALANCE {self.balance} "
                 f"via CUSTOMER WITHDRAWAL with tran_id: {request.tran_id}")
+        else:
+            logger.warning(f"WITHDRAWAL FAILED for ID#{self.id} with PROPAGATE WITHDRAW FAILURE")
         transaction_status:str = 'success' if propagate_status else 'failure'
 
         logging.info(f"Returning a CUSTOMER response for {request.interface} for cust_id {request.cust_id} with "
@@ -130,17 +173,17 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
         :return: example_pb2.BResponse Object Type
         """
         deposit_amount = request.money
-        logging.info(f"Received a BRANCH DEPOSIT PROPAGATION request to {request.interface} for cust_id "
+        logging.debug(f"Received a BRANCH DEPOSIT PROPAGATION request to {request.interface} for cust_id "
                      f"{request.cust_id} with tran_id {request.tran_id}")
         self.balance += deposit_amount
-        transaction_status = 'SUCCESS'
+        transaction_status = True
         logger.info(f"BRANCH with ID#{self.id} has the balance INCREASED by {request.money} for {request.cust_id} To "
                     f"BALANCE {self.balance} via BRANCH DEPOSIT PROPAGATION from BRANCH_ID{request.src_branch_id} "
                     f"with tran_id: {request.tran_id}")
-        logging.info(f"Returning a CUSTOMER response for {request.interface} for cust_id {request.cust_id} with "
+        logging.debug(f"Returning a CUSTOMER response for {request.interface} for cust_id {request.cust_id} with "
                      f"tran_id {request.tran_id} with {transaction_status}")
         return example_pb2.BResponse(cust_id=self.id, tran_id=request.tran_id, interface=request.interface,
-                                     result=transaction_status)
+                                     money=self.balance, status = transaction_status)
 
     def Propagate_Withdraw(self, request, context):
         """
@@ -149,17 +192,17 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
         :param context: -
         :return: example_pb2.BResponse Object Type
         """
-        deposit_amount = request.money
-        logging.info(f"Received a BRANCH WITHDRAWAL PROPAGATION request to {request.interface} for cust_id "
+        withdraw_amount = request.money
+        logging.debug(f"Received a BRANCH WITHDRAWAL PROPAGATION request to {request.interface} for cust_id "
                      f"{request.cust_id} with tran_id {request.tran_id}")
-        self.balance -= deposit_amount
+        self.balance -= withdraw_amount
         logger.info(f"BRANCH with ID#{self.id} has the balance DECREASED by {request.money} for cust_id "
                     f"{request.cust_id} To BALANCE {self.balance} via BRANCH WITHDRAW PROPAGATION from "
                     f"BRANCH_ID{request.src_branch_id} with tran_id: {request.tran_id}")
-        logging.info(f"Returning a BRANCH WITHDRAW PROPAGATION response for {request.interface} for cust_id "
+        logging.debug(f"Returning a BRANCH WITHDRAW PROPAGATION response for {request.interface} for cust_id "
                      f"{request.cust_id} with tran_id {request.tran_id} with status {True}")
         return example_pb2.BResponse(cust_id=self.id, tran_id=request.tran_id, interface=request.interface,
-                                     status=True)
+                                     money=self.balance, status=True)
 
     def branch_grpc_serve(self):
         logging.info(f"Starting branch server on process{self.port}")
