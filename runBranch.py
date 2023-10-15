@@ -8,19 +8,13 @@ import json
 from Branch import Branch
 from multiprocessing import Process, Event
 
+logger = logging.getLogger(__name__)
 
-handler = logging.StreamHandler()
-formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
-handler.setFormatter(formatter)
-logger = logging.getLogger()
-logger.setLevel(level=logging.INFO)
-logger.addHandler(handler)
-logger = logging.getLogger()
-
+RUN_THIS_FILE = False
 
 def read_json(filepath: str):
     logger.info(f"Reading the FILEPATH {filepath} for branch initialization events")
-    with open('input_small.json', 'r') as input_test_file:
+    with open(filepath, 'r') as input_test_file:
         file_contents = input_test_file.read()
 
     input_tests = json.loads(file_contents)
@@ -61,16 +55,29 @@ def create_bank_processes(branch_list: list):
             process = Process(target=branch_object.branch_grpc_serve)
             branch_processes.append(process)
             process.start()
-        for process in branch_processes:
-            process.join()
+        if RUN_THIS_FILE:
+            logger.debug("RUN_THIS_FILE is enabled - will wait for the processes to finish or CTRL+C")
+            for process in branch_processes:
+                process.join()
 
     except KeyboardInterrupt:
         logger.warning("Received KeyboardInterruptException - Terminating now.")
         for process in branch_processes:
             process.terminate()
 
+    if not RUN_THIS_FILE:
+        return branch_processes
 
 if __name__ == '__main__':
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
+    handler.setFormatter(formatter)
+    logger = logging.getLogger()
+    logger.setLevel(level=logging.INFO)
+    logger.addHandler(handler)
+    # setting the RUN_THIS _FILE to True, so it runs the process.join() snippet otherwise it's being called from
+    # outside.
+    RUN_THIS_FILE = True
     input_tests = read_json(filepath="./input_small.json")
     branch_list = create_bank_processes_dict(input_tests=input_tests)
     create_bank_processes(branch_list=branch_list)

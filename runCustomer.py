@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 def read_customer_json(filepath: str):
     logger.info(f"Reading the FILEPATH {filepath} for customer initialization events")
-    with open('input_small.json', 'r') as input_test_file:
+    with open(filepath, 'r') as input_test_file:
         file_contents = input_test_file.read()
 
     input_tests = json.loads(file_contents)

@@ -205,7 +205,7 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
                                      money=self.balance, status=True)
 
     def branch_grpc_serve(self):
-        logging.info(f"Starting branch server on process{self.port}")
+        logging.info(f"Starting branch server on localhost with {self.port}")
         self.server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
         example_pb2_grpc.add_CustomerTransactionServicer_to_server(self, self.server)
         self.server.add_insecure_port("[::]:" + self.port)

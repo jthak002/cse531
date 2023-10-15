@@ -34,10 +34,10 @@ class Customer:
 
 
     def executeEvents(self):
-        logger.info(f"Executing the events for customerID#{self.id}")
         for event in self.events:
             try:
                 response_record = {}
+                logger.info(f"%%% Executing the event with tran_id#{event.get('id')} for customerID#{self.id}")
                 if event.get('interface') == 'query':
                     response = self.stub.Query(example_pb2.CTransaction(cust_id=self.id, tran_id=event.get('id'),
                                                                         interface='query', money=0))
