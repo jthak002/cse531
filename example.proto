@@ -26,6 +26,7 @@ message CTransaction {
     int32 tran_id = 2;
     string interface = 3;
     float money = 4;
+    int64 localtime = 5;
 }
 
 message CResponse {
@@ -42,6 +43,7 @@ message BTransaction {
     int32 src_branch_id = 3;
     string interface = 4;
     float money = 5;
+    int64 src_branch_localtime = 6;
 }
 
 message BResponse {

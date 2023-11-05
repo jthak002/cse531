@@ -13,7 +13,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rexample.proto\x12\x07\x65xample\"R\n\x0c\x43Transaction\x12\x0f\n\x07\x63ust_id\x18\x01 \x01(\x05\x12\x0f\n\x07tran_id\x18\x02 \x01(\x05\x12\x11\n\tinterface\x18\x03 \x01(\t\x12\r\n\x05money\x18\x04 \x01(\x02\"P\n\tCResponse\x12\x0f\n\x07\x63ust_id\x18\x01 \x01(\x05\x12\x0f\n\x07tran_id\x18\x02 \x01(\x05\x12\x11\n\tinterface\x18\x03 \x01(\t\x12\x0e\n\x06result\x18\x04 \x01(\t\"i\n\x0c\x42Transaction\x12\x0f\n\x07\x63ust_id\x18\x01 \x01(\x05\x12\x0f\n\x07tran_id\x18\x02 \x01(\x05\x12\x15\n\rsrc_branch_id\x18\x03 \x01(\x05\x12\x11\n\tinterface\x18\x04 \x01(\t\x12\r\n\x05money\x18\x05 \x01(\x02\"_\n\tBResponse\x12\x0f\n\x07\x63ust_id\x18\x01 \x01(\x05\x12\x0f\n\x07tran_id\x18\x02 \x01(\x05\x12\x11\n\tinterface\x18\x03 \x01(\t\x12\r\n\x05money\x18\x04 \x01(\x02\x12\x0e\n\x06status\x18\x05 \x01(\x08\x32\xc1\x02\n\x13\x43ustomerTransaction\x12\x34\n\x05Query\x12\x15.example.CTransaction\x1a\x12.example.CResponse\"\x00\x12\x36\n\x07\x44\x65posit\x12\x15.example.CTransaction\x1a\x12.example.CResponse\"\x00\x12\x37\n\x08Withdraw\x12\x15.example.CTransaction\x1a\x12.example.CResponse\"\x00\x12@\n\x11Propagate_Deposit\x12\x15.example.BTransaction\x1a\x12.example.BResponse\"\x00\x12\x41\n\x12Propagate_Withdraw\x12\x15.example.BTransaction\x1a\x12.example.BResponse\"\x00\x42+\n\x18io.grpc.examples.exampleB\x07\x45xampleP\x01\xa2\x02\x03\x45XMb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rexample.proto\x12\x07\x65xample\"e\n\x0c\x43Transaction\x12\x0f\n\x07\x63ust_id\x18\x01 \x01(\x05\x12\x0f\n\x07tran_id\x18\x02 \x01(\x05\x12\x11\n\tinterface\x18\x03 \x01(\t\x12\r\n\x05money\x18\x04 \x01(\x02\x12\x11\n\tlocaltime\x18\x05 \x01(\x03\"P\n\tCResponse\x12\x0f\n\x07\x63ust_id\x18\x01 \x01(\x05\x12\x0f\n\x07tran_id\x18\x02 \x01(\x05\x12\x11\n\tinterface\x18\x03 \x01(\t\x12\x0e\n\x06result\x18\x04 \x01(\t\"\x87\x01\n\x0c\x42Transaction\x12\x0f\n\x07\x63ust_id\x18\x01 \x01(\x05\x12\x0f\n\x07tran_id\x18\x02 \x01(\x05\x12\x15\n\rsrc_branch_id\x18\x03 \x01(\x05\x12\x11\n\tinterface\x18\x04 \x01(\t\x12\r\n\x05money\x18\x05 \x01(\x02\x12\x1c\n\x14src_branch_localtime\x18\x06 \x01(\x03\"_\n\tBResponse\x12\x0f\n\x07\x63ust_id\x18\x01 \x01(\x05\x12\x0f\n\x07tran_id\x18\x02 \x01(\x05\x12\x11\n\tinterface\x18\x03 \x01(\t\x12\r\n\x05money\x18\x04 \x01(\x02\x12\x0e\n\x06status\x18\x05 \x01(\x08\x32\xc1\x02\n\x13\x43ustomerTransaction\x12\x34\n\x05Query\x12\x15.example.CTransaction\x1a\x12.example.CResponse\"\x00\x12\x36\n\x07\x44\x65posit\x12\x15.example.CTransaction\x1a\x12.example.CResponse\"\x00\x12\x37\n\x08Withdraw\x12\x15.example.CTransaction\x1a\x12.example.CResponse\"\x00\x12@\n\x11Propagate_Deposit\x12\x15.example.BTransaction\x1a\x12.example.BResponse\"\x00\x12\x41\n\x12Propagate_Withdraw\x12\x15.example.BTransaction\x1a\x12.example.BResponse\"\x00\x42+\n\x18io.grpc.examples.exampleB\x07\x45xampleP\x01\xa2\x02\x03\x45XMb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -22,13 +22,13 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   DESCRIPTOR._options = None
   DESCRIPTOR._serialized_options = b'\n\030io.grpc.examples.exampleB\007ExampleP\001\242\002\003EXM'
   _globals['_CTRANSACTION']._serialized_start=26
-  _globals['_CTRANSACTION']._serialized_end=108
-  _globals['_CRESPONSE']._serialized_start=110
-  _globals['_CRESPONSE']._serialized_end=190
-  _globals['_BTRANSACTION']._serialized_start=192
-  _globals['_BTRANSACTION']._serialized_end=297
-  _globals['_BRESPONSE']._serialized_start=299
-  _globals['_BRESPONSE']._serialized_end=394
-  _globals['_CUSTOMERTRANSACTION']._serialized_start=397
-  _globals['_CUSTOMERTRANSACTION']._serialized_end=718
+  _globals['_CTRANSACTION']._serialized_end=127
+  _globals['_CRESPONSE']._serialized_start=129
+  _globals['_CRESPONSE']._serialized_end=209
+  _globals['_BTRANSACTION']._serialized_start=212
+  _globals['_BTRANSACTION']._serialized_end=347
+  _globals['_BRESPONSE']._serialized_start=349
+  _globals['_BRESPONSE']._serialized_end=444
+  _globals['_CUSTOMERTRANSACTION']._serialized_start=447
+  _globals['_CUSTOMERTRANSACTION']._serialized_end=768
 # @@protoc_insertion_point(module_scope)
