@@ -18,6 +18,16 @@ class Customer:
         self.recvMsg = list()
         # pointer for the stub
         self.stub = None
+        # variable to track localtime
+        self.localtime = 0
+
+    def increment_local_time(self):
+        """
+        Function to increment localtime of the customer by 1 unit.
+        :return: None
+        """
+        self.localtime += 1
+
 
     def createStub(self):
         """
@@ -37,20 +47,28 @@ class Customer:
         for event in self.events:
             try:
                 response_record = {}
-                logger.info(f"%%% Executing the event with tran_id#{event.get('id')} for customerID#{self.id}")
+                self.increment_local_time()
+                logger.info(f"%%% Executing the event with tran_id#{event.get('id')} for customerID#{self.id} at "
+                            f"local_time: {self.localtime}")
                 if event.get('interface') == 'query':
                     response = self.stub.Query(example_pb2.CTransaction(cust_id=self.id, tran_id=event.get('id'),
-                                                                        interface='query', money=0))
-                    response_record = {'interface': 'query', 'result': response.result}
+                                                                        interface='query', money=0,
+                                                                        localtime=self.localtime))
+                    response_record = {'customer-request-id': event.get('id'), 'logical_clock': self.localtime,
+                                       'interface': 'query',  'comment': f'event_sent from customer {self.id}'}
                 elif event['interface'] == 'deposit':
                     response = self.stub.Deposit(example_pb2.CTransaction(cust_id=self.id, tran_id=event.get('id'),
-                                                                        interface='deposit', money=event.get('money')))
-                    response_record = {'interface': 'deposit', 'result': response.result}
+                                                                        interface='deposit', money=event.get('money'),
+                                                                          localtime=self.localtime))
+                    response_record = {'customer-request-id': event.get('id'), 'logical_clock': self.localtime,
+                                       'interface': 'deposit', 'comment': f'event_sent from customer {self.id}'}
                 elif event['interface'] == 'withdraw':
                     response = self.stub.Withdraw(example_pb2.CTransaction(cust_id=self.id, tran_id=event.get('id'),
                                                                           interface='withdraw',
-                                                                          money=event.get('money')))
-                    response_record = {'interface': 'withdraw', 'result': response.result}
+                                                                          money=event.get('money'),
+                                                                           localtime=self.localtime))
+                    response_record = {'customer-request-id': event.get('id'), 'logical_clock': self.localtime,
+                                       'interface': 'withdraw', 'comment': f'event_sent from customer {self.id}'}
                 else:
                     logger.error(f"Encountered Invalid Event for CustomerID#{self.id}; DETAILS OF EVENT- {event}")
                 self.recvMsg.append(response_record)

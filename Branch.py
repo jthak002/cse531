@@ -8,13 +8,15 @@ logger = logging.getLogger(__name__)
 
 
 BASE_PORT = 50000
-
+# setting up max_workers to 1 prevent issues with multiple workers causing race conditions.
+MAX_WORKERS = 1
 class Branch(example_pb2_grpc.CustomerTransactionServicer):
     id = 0
     balance = 0
     peer_branches = []
     stubList = []
     server = None
+    local_time = 0
     def __init__(self, id, balance, branches):
         # unique ID of the Branch
         self.id = id
@@ -43,6 +45,32 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
         # iterate the processID of the branches
         # TODO: students are expected to store the processID of the branches
         pass
+
+    def compare_set_localtime(self, remote_clock = 0, src_branch_id=-1):
+        """
+        This function compares the local branch time to the provided remote branch clock time, and if the local branch
+        time is less than the remote branch time is lesser than the remote branch time, then it sets the local branch
+        time to the value of the remote branch time, according to lamport's logical clock algorithm.
+        :param remote_clock: the logical time of the remote process/customer
+        :param src_branch_id: the logical time of the local process
+        :return: None
+        """
+        if self.local_time >= remote_clock:
+            pass
+        else:
+            self.local_time = remote_clock
+            logger.debug(f"Set the localtime for the local_branch id{self.id} to remote_clock time: {remote_clock} from "
+                         f"remote_branch: {src_branch_id if src_branch_id !=-1 else 'NA'}")
+
+    def increment_local_time(self) -> int:
+        """
+        Function to increase the local_time of the process by 1. Write this simple statement as a function so that
+        future mutexes can be implemented cleanly in this code block itself.
+        :return: self.local_time the localtime incremented by 1
+        """
+        logger.debug(f"incrementing time on branch_id: {self.id}")
+        self.local_time += 1
+        return self.local_time
 
     def send_btransaction_message(self, cust_id:int, tran_id:int, src_branch_id, interface:str, amount:float) -> bool:
         """
@@ -206,7 +234,7 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
 
     def branch_grpc_serve(self):
         logging.info(f"Starting branch server on localhost with {self.port}")
-        self.server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+        self.server = grpc.server(futures.ThreadPoolExecutor(max_workers=MAX_WORKERS))
         example_pb2_grpc.add_CustomerTransactionServicer_to_server(self, self.server)
         self.server.add_insecure_port("[::]:" + self.port)
         self.server.start()
