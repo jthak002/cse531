@@ -17,6 +17,7 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
     stubList = []
     server = None
     local_time = 0
+    events = []
     def __init__(self, id, balance, branches):
         # unique ID of the Branch
         self.id = id
@@ -112,12 +113,6 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
                 return response.status
         return True
 
-
-    # TODO: students are expected to process requests from both Client and Branch
-    def MsgDelivery(self,request, context):
-        pass
-
-
     def Query(self, request, context):
         """
         Function to query the bank balance of the customer
@@ -127,6 +122,7 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
         """
         logging.info(f">>> Received a CUSTOMER request to {request.interface} for cust_id {request.cust_id} with "
                      f"tran_id {request.tran_id}")
+        self.events.append({})
         balance_str = 'balance: ' + str(self.balance)
         logging.info(f"Returning a CUSTOMER response for {request.interface} for cust_id {request.cust_id} with "
                      f"tran_id {request.tran_id} as {balance_str}")
