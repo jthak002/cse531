@@ -1,15 +1,17 @@
 from concurrent import futures
+import threading
 import grpc
 import example_pb2
 import example_pb2_grpc
 import logging
+
 
 logger = logging.getLogger(__name__)
 
 
 BASE_PORT = 50000
 # setting up max_workers to 1 prevent issues with multiple workers causing race conditions.
-MAX_WORKERS = 1
+MAX_WORKERS = 10
 class Branch(example_pb2_grpc.CustomerTransactionServicer):
     id = 0
     balance = 0
@@ -18,6 +20,7 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
     server = None
     local_time = 0
     events = []
+    lock = None
     def __init__(self, id, balance, branches):
         # unique ID of the Branch
         self.id = id
@@ -43,11 +46,12 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
         logger.info(f"Initializing Branch with ID#{self.id} with peer branches stubs {self.peer_branches}")
         # a list of received messages used for debugging purpose
         self.recvMsg = []
+        self.lock = threading.Lock()
         # iterate the processID of the branches
         # TODO: students are expected to store the processID of the branches
         pass
 
-    def compare_set_localtime(self, remote_clock = 0, src_branch_id=-1):
+    def compare_set_localtime(self, remote_clock = 0, src_branch_id=-1) -> int:
         """
         This function compares the local branch time to the provided remote branch clock time, and if the local branch
         time is less than the remote branch time is lesser than the remote branch time, then it sets the local branch
@@ -62,6 +66,7 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
             self.local_time = remote_clock
             logger.debug(f"Set the localtime for the local_branch id{self.id} to remote_clock time: {remote_clock} from "
                          f"remote_branch: {src_branch_id if src_branch_id !=-1 else 'NA'}")
+        return self.local_time
 
     def increment_local_time(self) -> int:
         """
@@ -120,9 +125,12 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
         :param context: -
         :return: example_pb2.CResponse Object Type
         """
-        logging.info(f">>> Received a CUSTOMER request to {request.interface} for cust_id {request.cust_id} with "
-                     f"tran_id {request.tran_id}")
-        self.events.append({})
+        with self.lock:
+            logging.info(f">>> Received a CUSTOMER request to {request.interface} for cust_id {request.cust_id} with "
+                         f"tran_id {request.tran_id} at localtime {self.local_time}")
+            self.compare_set_localtime(remote_clock=request.localtime)
+            self.events.append({'customer-request-id': request.cust_id, 'logical_clock': self.local_time, 'interface':
+                'query', 'comment': f'query_recv from {request.cust_id}'})
         balance_str = 'balance: ' + str(self.balance)
         logging.info(f"Returning a CUSTOMER response for {request.interface} for cust_id {request.cust_id} with "
                      f"tran_id {request.tran_id} as {balance_str}")
@@ -137,9 +145,11 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
         :return: example_pb2.CResponse Object Type
         """
         deposit_amount = request.money
-        logging.info(f">>> Received a CUSTOMER request to {request.interface} for cust_id {request.cust_id} with "
-                     f"tran_id {request.tran_id}")
-        self.balance += deposit_amount
+        with self.lock:
+            logging.info(f">>> Received a CUSTOMER request to {request.interface} for cust_id {request.cust_id} with "
+                     f"tran_id {request.tran_id} at localtime {self.local_time}")
+            fn_localtime = self.compare_set_localtime(remote_clock=request.localtime)
+            self.balance += deposit_amount
         ###################################
         # CODE FOR PROPAGATING BALANCE HERE
         propagate_status = self.send_btransaction_message(cust_id=request.cust_id, tran_id=request.tran_id,
@@ -167,9 +177,11 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
         :return: example_pb2.CResponse Object Type
         """
         withdraw_amount = request.money
-        logging.info(f">>> Received a CUSTOMER request to {request.interface} for cust_id {request.cust_id} with "
-                     f"tran_id {request.tran_id}")
-        self.balance -= withdraw_amount
+        with self.lock:
+            logging.info(f">>> Received a CUSTOMER request to {request.interface} for cust_id {request.cust_id} with "
+                     f"tran_id {request.tran_id} at localtime {self.local_time}")
+            fn_localtime = self.compare_set_localtime(remote_clock=request.localtime)
+            self.balance -= withdraw_amount
         ###################################
         # CODE FOR PROPAGATING BALANCE HERE
         propagate_status = self.send_btransaction_message(cust_id=request.cust_id, tran_id=request.tran_id,
