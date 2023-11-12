@@ -61,4 +61,5 @@ message Bterminate {
 
 message Bterminate_Status {
     int32 exit_code = 1;
+    string event_resp_string = 2;
 }

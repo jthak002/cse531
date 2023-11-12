@@ -67,7 +67,9 @@ class Bterminate(_message.Message):
     def __init__(self, filename: _Optional[str] = ...) -> None: ...
 
 class Bterminate_Status(_message.Message):
-    __slots__ = ["exit_code"]
+    __slots__ = ["exit_code", "event_resp_string"]
     EXIT_CODE_FIELD_NUMBER: _ClassVar[int]
+    EVENT_RESP_STRING_FIELD_NUMBER: _ClassVar[int]
     exit_code: int
-    def __init__(self, exit_code: _Optional[int] = ...) -> None: ...
+    event_resp_string: str
+    def __init__(self, exit_code: _Optional[int] = ..., event_resp_string: _Optional[str] = ...) -> None: ...
