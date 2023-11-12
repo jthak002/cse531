@@ -40,6 +40,11 @@ class CustomerTransactionStub(object):
                 request_serializer=example__pb2.BTransaction.SerializeToString,
                 response_deserializer=example__pb2.BResponse.FromString,
                 )
+        self.Terminate = channel.unary_unary(
+                '/example.CustomerTransaction/Terminate',
+                request_serializer=example__pb2.Bterminate.SerializeToString,
+                response_deserializer=example__pb2.Bterminate_Status.FromString,
+                )
 
 
 class CustomerTransactionServicer(object):
@@ -81,6 +86,12 @@ class CustomerTransactionServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def Terminate(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_CustomerTransactionServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -108,6 +119,11 @@ def add_CustomerTransactionServicer_to_server(servicer, server):
                     servicer.Propagate_Withdraw,
                     request_deserializer=example__pb2.BTransaction.FromString,
                     response_serializer=example__pb2.BResponse.SerializeToString,
+            ),
+            'Terminate': grpc.unary_unary_rpc_method_handler(
+                    servicer.Terminate,
+                    request_deserializer=example__pb2.Bterminate.FromString,
+                    response_serializer=example__pb2.Bterminate_Status.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -202,5 +218,22 @@ class CustomerTransaction(object):
         return grpc.experimental.unary_unary(request, target, '/example.CustomerTransaction/Propagate_Withdraw',
             example__pb2.BTransaction.SerializeToString,
             example__pb2.BResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def Terminate(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/example.CustomerTransaction/Terminate',
+            example__pb2.Bterminate.SerializeToString,
+            example__pb2.Bterminate_Status.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

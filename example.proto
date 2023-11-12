@@ -19,6 +19,7 @@ service CustomerTransaction {
     rpc Withdraw(CTransaction) returns(CResponse) {}
     rpc Propagate_Deposit(BTransaction) returns(BResponse) {}
     rpc Propagate_Withdraw(BTransaction) returns(BResponse) {}
+    rpc Terminate(Bterminate) returns(Bterminate_Status) {}
 }
 
 message CTransaction {
@@ -52,4 +53,12 @@ message BResponse {
     string interface = 3;
     float money = 4;
     bool status = 5;
+}
+
+message Bterminate {
+    string filename = 1;
+}
+
+message Bterminate_Status {
+    int32 exit_code = 1;
 }

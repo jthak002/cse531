@@ -59,3 +59,15 @@ class BResponse(_message.Message):
     money: float
     status: bool
     def __init__(self, cust_id: _Optional[int] = ..., tran_id: _Optional[int] = ..., interface: _Optional[str] = ..., money: _Optional[float] = ..., status: bool = ...) -> None: ...
+
+class Bterminate(_message.Message):
+    __slots__ = ["filename"]
+    FILENAME_FIELD_NUMBER: _ClassVar[int]
+    filename: str
+    def __init__(self, filename: _Optional[str] = ...) -> None: ...
+
+class Bterminate_Status(_message.Message):
+    __slots__ = ["exit_code"]
+    EXIT_CODE_FIELD_NUMBER: _ClassVar[int]
+    exit_code: int
+    def __init__(self, exit_code: _Optional[int] = ...) -> None: ...
