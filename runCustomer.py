@@ -28,34 +28,33 @@ def create_customer_objects(input_tests: dict):
 
 
 def execute_customer_events(customer_list, output_filename:str):
-    response_list = []
-    customer_process_list = []
-    logger.info("creating and starting individual processes for each customer")
-    try:
-        for customer in customer_list:
-            customer.createStub()
-            process = Process(target=customer.executeEvents, args=shared_list)
-            customer_process_list.append(process)
-            process.start()
-    except KeyboardInterrupt:
-        logger.error("Encountered Keyboard Interrupt in the middle of initializing the customer processes - terminating"
-                     " all the half initialized and running customer processes")
-        for customer_process in customer_process_list:
-            customer_process.terminate()
-        logger.info("No Output since the program was exited half way through")
-        return customer_list
+    with Manager() as manager:
+        response_list = manager.list()
+        customer_process_list = []
+        logger.info("creating and starting individual processes for each customer")
+        try:
+            for customer in customer_list:
+                customer.createStub()
+                customer.shared_list = response_list
+                process = Process(target=customer.executeEvents)
+                customer_process_list.append(process)
+                process.start()
+        except KeyboardInterrupt:
+            logger.error("Encountered Keyboard Interrupt in the middle of initializing the customer processes - "
+                         "terminating all the half initialized and running customer processes")
+            for customer_process in customer_process_list:
+                customer_process.terminate()
+            logger.info("No Output since the program was exited half way through")
+            return customer_list
 
-    # herding all the customer processes and fetching the outputs after execution
-    # -joining the execution of all the customer processes
-    for customer_process in customer_process_list:
-        customer_process.join()
-    # -gathering the output from all the process
-    for customer in customer_list:
-        dict_response = customer.getMessages()
-        logger.debug(f"#### {dict_response}")
-        response_list.append(dict_response)
+        # herding all the customer processes and fetching the outputs after execution
+        # -joining the execution of all the customer processes
+        for customer_process in customer_process_list:
+            customer_process.join()
+        # -gathering the output from all the process
+        final_responses = list(response_list)
     with open(output_filename,'w') as customer_output:
-        customer_output.write(json.dumps(response_list))
+        customer_output.write(json.dumps(final_responses))
         customer_output.close()
     return customer_list
 

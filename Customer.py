@@ -21,6 +21,7 @@ class Customer:
         self.stub = None
         # variable to track localtime
         self.localtime = 0
+        self.shared_list = None
 
     def increment_local_time(self):
         """
@@ -43,11 +44,10 @@ class Customer:
             exit(1)
         logger.info(f"Created a gRPC STUB for CustomerID#{self.id}")
 
-    def executeEvents(self, mp_managed_list):
-        temp_managed_list = []
+    def executeEvents(self):
+        temp_list = []
         for event in self.events:
             try:
-                response_record = {}
                 fn_localtime = self.increment_local_time()
                 logger.info(f"%%% Executing the event with tran_id#{event.get('customer-request-id')} for "
                             f"customerID#{self.id} at local_time: {self.localtime}")
@@ -56,7 +56,7 @@ class Customer:
                                                                         tran_id=event.get('customer-request-id'),
                                                                         interface='query', money=0,
                                                                         localtime=self.localtime))
-                    temp_managed_list.append({'customer-request-id': event.get('customer-request-id'),
+                    temp_list.append({'customer-request-id': event.get('customer-request-id'),
                                                        'logical_clock': fn_localtime, 'interface': 'query',
                                                        'comment': f'event_sent from customer {self.id}'})
                 elif event['interface'] == 'deposit':
@@ -64,7 +64,7 @@ class Customer:
                                                                           tran_id=event.get('customer-request-id'),
                                                                         interface='deposit', money=event.get('money'),
                                                                           localtime=self.localtime))
-                    temp_managed_list.append({'customer-request-id': event.get("customer-request-id"),
+                    temp_list.append({'customer-request-id': event.get("customer-request-id"),
                                                        'logical_clock': fn_localtime, 'interface': 'deposit',
                                                        'comment': f'event_sent from customer {self.id}'})
                 elif event['interface'] == 'withdraw':
@@ -73,13 +73,13 @@ class Customer:
                                                                           interface='withdraw',
                                                                           money=event.get('money'),
                                                                            localtime=self.localtime))
-                    temp_managed_list.append({'customer-request-id': event.get('customer-request-id'),
+                    temp_list.append({'customer-request-id': event.get('customer-request-id'),
                                                        'logical_clock': fn_localtime, 'interface': 'withdraw',
                                                        'comment': f'event_sent from customer {self.id}'})
                 else:
                     logger.error(f"Encountered Invalid Event for CustomerID#{self.id}; DETAILS OF EVENT- {event}")
-                mp_managed_list.append({'id': self.id, 'type': 'customer', 'events': copy.deepcopy(temp_managed_list)})
-
+                self.shared_list.append(copy.deepcopy({'id': self.id, 'type': 'customer',
+                                                      'events': temp_list}))
             except KeyError:
                 logger.error(f"Invalid event encountered for CustomerID#{self.id}; DETAILS OF EVENT- {event}")
                 continue
