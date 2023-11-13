@@ -1,6 +1,7 @@
 import logging
 import json
 from Customer import Customer
+from multiprocessing import Process, Manager
 
 logger = logging.getLogger(__name__)
 
@@ -22,20 +23,41 @@ def create_customer_objects(input_tests: dict):
     logger.info("parsing & filtering the the list of customer initialization events in the input.json file")
     for input_test in input_tests:
         if input_test.get('type') == "customer":
-            customer_list.append(Customer(id=input_test.get('id'), events=input_test.get('events')))
+            customer_list.append(Customer(id=input_test.get('id'), events=input_test.get('customer-requests')))
     return customer_list
 
-def execute_customer_events(customer_list):
+
+def execute_customer_events(customer_list, output_filename:str):
     response_list = []
+    customer_process_list = []
+    logger.info("creating and starting individual processes for each customer")
+    try:
+        for customer in customer_list:
+            customer.createStub()
+            process = Process(target=customer.executeEvents, args=shared_list)
+            customer_process_list.append(process)
+            process.start()
+    except KeyboardInterrupt:
+        logger.error("Encountered Keyboard Interrupt in the middle of initializing the customer processes - terminating"
+                     " all the half initialized and running customer processes")
+        for customer_process in customer_process_list:
+            customer_process.terminate()
+        logger.info("No Output since the program was exited half way through")
+        return customer_list
+
+    # herding all the customer processes and fetching the outputs after execution
+    # -joining the execution of all the customer processes
+    for customer_process in customer_process_list:
+        customer_process.join()
+    # -gathering the output from all the process
     for customer in customer_list:
-        customer.createStub()
-        customer.executeEvents()
         dict_response = customer.getMessages()
-        logger.info(f"#### {dict_response}")
+        logger.debug(f"#### {dict_response}")
         response_list.append(dict_response)
-    with open('customer_output.json','a') as customer_output:
+    with open(output_filename,'w') as customer_output:
         customer_output.write(json.dumps(response_list))
         customer_output.close()
+    return customer_list
 
 
 if __name__ == '__main__':

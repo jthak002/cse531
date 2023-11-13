@@ -1,17 +1,20 @@
+import sys
+import traceback
 from concurrent import futures
 import threading
 import grpc
 import example_pb2
 import example_pb2_grpc
 import logging
-
+import json
 
 logger = logging.getLogger(__name__)
-
 
 BASE_PORT = 50000
 # setting up max_workers to 1 prevent issues with multiple workers causing race conditions.
 MAX_WORKERS = 10
+
+
 class Branch(example_pb2_grpc.CustomerTransactionServicer):
     id = 0
     balance = 0
@@ -21,6 +24,7 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
     local_time = 0
     events = []
     lock = None
+
     def __init__(self, id, balance, branches):
         # unique ID of the Branch
         self.id = id
@@ -37,7 +41,7 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
         try:
             for peer in self.peer_branches:
                 logger.debug(f"Setting up gRPC channel between {self.id} and {peer}")
-                channel = grpc.insecure_channel("localhost:"+str(50000+peer))
+                channel = grpc.insecure_channel("localhost:" + str(50000 + peer))
                 stub = example_pb2_grpc.CustomerTransactionStub(channel)
                 self.stubList.append({'peer_id': peer, 'stub': stub})
         except Exception:
@@ -51,7 +55,7 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
         # TODO: students are expected to store the processID of the branches
         pass
 
-    def compare_set_localtime(self, remote_clock = 0, src_branch_id=-1) -> int:
+    def compare_set_localtime(self, remote_clock=0, src_branch_id=-1) -> int:
         """
         This function compares the local branch time to the provided remote branch clock time, and if the local branch
         time is less than the remote branch time is lesser than the remote branch time, then it sets the local branch
@@ -61,11 +65,12 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
         :return: None
         """
         if self.local_time >= remote_clock:
-            pass
+            self.local_time += 1
         else:
-            self.local_time = remote_clock
-            logger.debug(f"Set the localtime for the local_branch id{self.id} to remote_clock time: {remote_clock} from "
-                         f"remote_branch: {src_branch_id if src_branch_id !=-1 else 'NA'}")
+            self.local_time = remote_clock + 1
+            logger.debug(
+                f"Set the localtime for the local_branch id{self.id} to remote_clock time: {remote_clock} from "
+                f" {f'remote_branch: {src_branch_id}' if src_branch_id != -1 else 'customer'}")
         return self.local_time
 
     def increment_local_time(self) -> int:
@@ -78,7 +83,8 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
         self.local_time += 1
         return self.local_time
 
-    def send_btransaction_message(self, cust_id:int, tran_id:int, src_branch_id, interface:str, amount:float) -> bool:
+    def send_btransaction_message(self, cust_id: int, tran_id: int, src_branch_id, interface: str,
+                                  amount: float) -> bool:
         """
         Function to propagate deposit or withdraw from branch to peer branches
         :param cust_id: customer id of the account - right now the same as the account
@@ -89,30 +95,32 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
         :return: True if all nodes received the transaction properly, else False
         """
         for stub_dict in self.stubList:
-            logger.debug(f"SENDING BTransaction Message from {src_branch_id} to PEER_BANKID#{stub_dict.get('peer_id')} for "
-                        f"cust_id{cust_id} with tran_id{tran_id} for {interface} operation for amount{amount}")
+            with self.lock:
+                fn_localtime = self.increment_local_time()
+                self.events.append({'customer-request-id': cust_id, 'logical_clock': fn_localtime,
+                                    'interface': interface.lower(), 'comment': f'event_sent to branch '
+                                                                    f'{stub_dict.get('peer_id')}'})
+            logger.debug(f"SENDING BTransaction Message from {src_branch_id} to "
+                         f"PEER_BANKID#{stub_dict.get('peer_id')} for cust_id{cust_id} with tran_id{tran_id} for "
+                         f"{interface} operation for amount{amount}")
             if interface == "PROPAGATE_DEPOSIT":
-                response = stub_dict.get('stub').Propagate_Deposit(example_pb2.BTransaction(cust_id=cust_id,
-                                                                                        tran_id=tran_id,
-                                                                                        src_branch_id=self.id,
-                                                                                        interface=interface,
-                                                                                        money=amount))
+                response = stub_dict.get('stub').Propagate_Deposit(
+                    example_pb2.BTransaction(cust_id=cust_id, tran_id=tran_id, src_branch_id=self.id,
+                                             interface=interface, money=amount,
+                                             src_branch_localtime=fn_localtime))
+
             elif interface == "PROPAGATE_WITHDRAW":
-                response = stub_dict.get('stub').Propagate_Withdraw(example_pb2.BTransaction(cust_id=cust_id,
-                                                                                            tran_id=tran_id,
-                                                                                            src_branch_id=self.id,
-                                                                                            interface=interface,
-                                                                                            money=amount))
+                response = stub_dict.get('stub').Propagate_Withdraw(
+                    example_pb2.BTransaction(cust_id=cust_id, tran_id=tran_id, src_branch_id=self.id,
+                                             interface=interface, money=amount,
+                                             src_branch_localtime=fn_localtime))
             else:
                 logger.critical("INVALID INTERFACE in Branch.send_btransaction_message() - exiting now")
                 exit(1)
             if response.status:
-                # SANITY CHECK THAT PROPAGATION WENT SUCCESSFULLY
-                if self.balance == response.money:
-                    pass
-                else:
-                    logger.critical("self.balance DOES NOT MATCH response.money - ABORT")
-                logger.debug(f"SUCCESSFULLY SENT {interface} from {self.id} to {stub_dict.get('peer_id')}")
+                # simply pass - no longer performing the remote balance sanity check like before; the balance will
+                # not be consistent due the differing requests from each user to the branch.
+                pass
             else:
                 logger.warning(f"FAILURE SENDING {interface} from {self.id} to {stub_dict.get('peer_id')}")
                 return response.status
@@ -130,7 +138,7 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
                          f"tran_id {request.tran_id} at localtime {self.local_time}")
             self.compare_set_localtime(remote_clock=request.localtime)
             self.events.append({'customer-request-id': request.cust_id, 'logical_clock': self.local_time, 'interface':
-                'query', 'comment': f'query_recv from {request.cust_id}'})
+                                'query', 'comment': f'query_recv from {request.cust_id}'})
         balance_str = 'balance: ' + str(self.balance)
         logging.info(f"Returning a CUSTOMER response for {request.interface} for cust_id {request.cust_id} with "
                      f"tran_id {request.tran_id} as {balance_str}")
@@ -144,11 +152,13 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
         :param context: -
         :return: example_pb2.CResponse Object Type
         """
-        deposit_amount = request.money
         with self.lock:
+            deposit_amount = request.money
             logging.info(f">>> Received a CUSTOMER request to {request.interface} for cust_id {request.cust_id} with "
-                     f"tran_id {request.tran_id} at localtime {self.local_time}")
+                         f"tran_id {request.tran_id} at localtime {self.local_time}")
             fn_localtime = self.compare_set_localtime(remote_clock=request.localtime)
+            self.events.append({'customer-request-id': request.cust_id, 'logical_clock': fn_localtime,
+                                'interface': 'deposit', 'comment': f'event_recv from customer {request.cust_id}'})
             self.balance += deposit_amount
         ###################################
         # CODE FOR PROPAGATING BALANCE HERE
@@ -162,7 +172,7 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
                 f"via CUSTOMER DEPOSIT with tran_id: {request.tran_id}")
         else:
             logger.warning(f"DEPOSIT FAILED for ID#{self.id} with PROPAGATE DEPOSIT FAILURE")
-        transaction_status:str = 'success' if propagate_status else 'failure'
+        transaction_status: str = 'success' if propagate_status else 'failure'
 
         logging.info(f"Returning a CUSTOMER response for {request.interface} for cust_id {request.cust_id} with "
                      f"tran_id {request.tran_id} as {transaction_status}")
@@ -176,11 +186,13 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
         :param context: -
         :return: example_pb2.CResponse Object Type
         """
-        withdraw_amount = request.money
         with self.lock:
+            withdraw_amount = request.money
             logging.info(f">>> Received a CUSTOMER request to {request.interface} for cust_id {request.cust_id} with "
-                     f"tran_id {request.tran_id} at localtime {self.local_time}")
+                         f"tran_id {request.tran_id} at localtime {self.local_time}")
             fn_localtime = self.compare_set_localtime(remote_clock=request.localtime)
+            self.events.append({'customer-request-id': request.cust_id, 'logical_clock': fn_localtime,
+                                'interface': 'withdraw', 'comment': f'event_recv from customer {request.cust_id}'})
             self.balance -= withdraw_amount
         ###################################
         # CODE FOR PROPAGATING BALANCE HERE
@@ -194,7 +206,7 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
                 f"via CUSTOMER WITHDRAWAL with tran_id: {request.tran_id}")
         else:
             logger.warning(f"WITHDRAWAL FAILED for ID#{self.id} with PROPAGATE WITHDRAW FAILURE")
-        transaction_status:str = 'success' if propagate_status else 'failure'
+        transaction_status: str = 'success' if propagate_status else 'failure'
 
         logging.info(f"Returning a CUSTOMER response for {request.interface} for cust_id {request.cust_id} with "
                      f"tran_id {request.tran_id} as {transaction_status}")
@@ -208,18 +220,23 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
         :param context: -
         :return: example_pb2.BResponse Object Type
         """
-        deposit_amount = request.money
-        logging.debug(f"Received a BRANCH DEPOSIT PROPAGATION request to {request.interface} for cust_id "
-                     f"{request.cust_id} with tran_id {request.tran_id}")
-        self.balance += deposit_amount
+        with self.lock:
+            deposit_amount = request.money
+            logging.debug(f"Received a BRANCH DEPOSIT PROPAGATION request to {request.interface} for cust_id "
+                          f"{request.cust_id} with tran_id {request.tran_id}")
+            fn_localtime = self.compare_set_localtime(remote_clock=request.src_branch_localtime)
+            self.events.append({'customer-request-id': request.cust_id, 'logical_clock': fn_localtime,
+                                'interface': 'propogate_deposit', 'comment': f'event_recv from branch '
+                                                                             f'{request.src_branch_id}'})
+            self.balance += deposit_amount
         transaction_status = True
         logger.info(f"BRANCH with ID#{self.id} has the balance INCREASED by {request.money} for {request.cust_id} To "
                     f"BALANCE {self.balance} via BRANCH DEPOSIT PROPAGATION from BRANCH_ID{request.src_branch_id} "
                     f"with tran_id: {request.tran_id}")
         logging.debug(f"Returning a CUSTOMER response for {request.interface} for cust_id {request.cust_id} with "
-                     f"tran_id {request.tran_id} with {transaction_status}")
+                      f"tran_id {request.tran_id} with {transaction_status}")
         return example_pb2.BResponse(cust_id=self.id, tran_id=request.tran_id, interface=request.interface,
-                                     money=self.balance, status = transaction_status)
+                                     money=self.balance, status=transaction_status)
 
     def Propagate_Withdraw(self, request, context):
         """
@@ -228,17 +245,41 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
         :param context: -
         :return: example_pb2.BResponse Object Type
         """
-        withdraw_amount = request.money
-        logging.debug(f"Received a BRANCH WITHDRAWAL PROPAGATION request to {request.interface} for cust_id "
-                     f"{request.cust_id} with tran_id {request.tran_id}")
-        self.balance -= withdraw_amount
+        with self.lock:
+            withdraw_amount = request.money
+            logging.debug(f"Received a BRANCH WITHDRAWAL PROPAGATION request to {request.interface} for cust_id "
+                          f"{request.cust_id} with tran_id {request.tran_id}")
+            fn_localtime = self.compare_set_localtime(remote_clock=request.src_branch_localtime)
+            self.events.append({'customer-request-id': request.cust_id, 'logical_clock': fn_localtime,
+                                'interface': 'propogate_withdraw', 'comment': f'event_recv from branch '
+                                                                              f'{request.src_branch_id}'})
+            self.balance -= withdraw_amount
         logger.info(f"BRANCH with ID#{self.id} has the balance DECREASED by {request.money} for cust_id "
                     f"{request.cust_id} To BALANCE {self.balance} via BRANCH WITHDRAW PROPAGATION from "
                     f"BRANCH_ID{request.src_branch_id} with tran_id: {request.tran_id}")
         logging.debug(f"Returning a BRANCH WITHDRAW PROPAGATION response for {request.interface} for cust_id "
-                     f"{request.cust_id} with tran_id {request.tran_id} with status {True}")
+                      f"{request.cust_id} with tran_id {request.tran_id} with status {True}")
         return example_pb2.BResponse(cust_id=self.id, tran_id=request.tran_id, interface=request.interface,
                                      money=self.balance, status=True)
+
+    def Terminate(self, request, context):
+        """
+        Function to terminate the branch and write the events to file.
+        :param request: grpc variable which stores the contents of the `Bterminate` RPC message from client
+        :param context: grpc variable for context
+        :return example_pb2.BTerminate_Status type object
+        """
+        logger.info(f"Received request to terminate branch with ID: {self.id}")
+        exit_code = 0
+        event_list_str = ''
+        try:
+            logger.info(f"Wrote the events for branch_id {self.id} to `event_list_str` variable")
+            event_list_str = json.dumps({'id': self.id, 'type': 'branch', 'events': self.events})
+            self.server.stop(grace=0)
+        except Exception:
+            logger.error(f"Could not send the response back to customer because of exception {sys.exc_info()}")
+            exit_code = 1
+        return example_pb2.Bterminate_Status(exit_code=exit_code, event_resp_string=event_list_str)
 
     def branch_grpc_serve(self):
         logging.info(f"Starting branch server on localhost with {self.port}")
