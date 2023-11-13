@@ -84,9 +84,12 @@ if __name__ == '__main__':
             temp_dict['type'] = _type
             collated_events_list.append(temp_dict)
 
+    sorted_by_cust_id = sorted(collated_events_list, key=lambda x: x['customer-request-id'])
+
     with open(EVENTS_OUTPUT_FILENAME, 'w') as event_fd:
         event_fd.write(json.dumps(collated_events_list))
         event_fd.close()
+
 
     # for process in branch_processes:
     #    process.terminate()
