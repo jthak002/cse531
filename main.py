@@ -67,24 +67,25 @@ if __name__ == '__main__':
 
     collated_events_list = []
     for events in branch_events_list:
-        _id = events.get('id')
-        _type = events.get('type')
+        cust_id = events.get('id')
+        cust_type = events.get('type')
         for event in events.get('events'):
             temp_dict = copy.deepcopy(event)
-            temp_dict['id'] = _id
-            temp_dict['type'] = _type
+            temp_dict['id'] = cust_id
+            temp_dict['type'] = cust_type
             collated_events_list.append(temp_dict)
 
     for events in customer_events_list:
-        _id = events.get('id')
-        _type = events.get('type')
+        br_id = events.get('id')
+        br_type = events.get('type')
         for event in events.get('events'):
             temp_dict = copy.deepcopy(event)
-            temp_dict['id'] = _id
-            temp_dict['type'] = _type
+            temp_dict['id'] = br_id
+            temp_dict['type'] = br_type
             collated_events_list.append(temp_dict)
 
-    sorted_by_cust_id = sorted(collated_events_list, key=lambda x: x['customer-request-id'])
+    # sorted_by_cust_id_and_logical_clock =
+    # sorted(collated_events_list, key=lambda x: (x['customer-request-id'], x['logical_clock']))
 
     with open(EVENTS_OUTPUT_FILENAME, 'w') as event_fd:
         event_fd.write(json.dumps(collated_events_list))

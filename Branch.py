@@ -97,9 +97,9 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
         for stub_dict in self.stubList:
             with self.lock:
                 fn_localtime = self.increment_local_time()
+                peer_branch_id = stub_dict.get('peer_id')
                 self.events.append({'customer-request-id': cust_id, 'logical_clock': fn_localtime,
-                                    'interface': interface.lower(), 'comment': f'event_sent to branch '
-                                                                    f'{stub_dict.get('peer_id')}'})
+                                    'interface': interface.lower(), 'comment': f'event_sent to branch {peer_branch_id}'})
             logger.debug(f"SENDING BTransaction Message from {src_branch_id} to "
                          f"PEER_BANKID#{stub_dict.get('peer_id')} for cust_id{cust_id} with tran_id{tran_id} for "
                          f"{interface} operation for amount{amount}")
@@ -226,7 +226,7 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
                           f"{request.cust_id} with tran_id {request.tran_id}")
             fn_localtime = self.compare_set_localtime(remote_clock=request.src_branch_localtime)
             self.events.append({'customer-request-id': request.cust_id, 'logical_clock': fn_localtime,
-                                'interface': 'propogate_deposit', 'comment': f'event_recv from branch '
+                                'interface': 'propagate_deposit', 'comment': f'event_recv from branch '
                                                                              f'{request.src_branch_id}'})
             self.balance += deposit_amount
         transaction_status = True
@@ -251,7 +251,7 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
                           f"{request.cust_id} with tran_id {request.tran_id}")
             fn_localtime = self.compare_set_localtime(remote_clock=request.src_branch_localtime)
             self.events.append({'customer-request-id': request.cust_id, 'logical_clock': fn_localtime,
-                                'interface': 'propogate_withdraw', 'comment': f'event_recv from branch '
+                                'interface': 'propagate_withdraw', 'comment': f'event_recv from branch '
                                                                               f'{request.src_branch_id}'})
             self.balance -= withdraw_amount
         logger.info(f"BRANCH with ID#{self.id} has the balance DECREASED by {request.money} for cust_id "

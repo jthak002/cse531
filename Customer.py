@@ -78,11 +78,10 @@ class Customer:
                                                        'comment': f'event_sent from customer {self.id}'})
                 else:
                     logger.error(f"Encountered Invalid Event for CustomerID#{self.id}; DETAILS OF EVENT- {event}")
-                self.shared_list.append(copy.deepcopy({'id': self.id, 'type': 'customer',
-                                                      'events': temp_list}))
             except KeyError:
                 logger.error(f"Invalid event encountered for CustomerID#{self.id}; DETAILS OF EVENT- {event}")
                 continue
+        self.shared_list.append(copy.deepcopy({'id': self.id, 'type': 'customer', 'events': temp_list}))
 
     def getMessages(self):
         return {'id': self.id, 'type': 'customer', 'events': copy.deepcopy(self.recvMsg)}
