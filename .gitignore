@@ -185,3 +185,4 @@ fabric.properties
 .idea
 tests/branch_output.json
 tests/customer_output.json
+tests/event_output.json
