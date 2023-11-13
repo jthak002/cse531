@@ -1,3 +1,4 @@
+import copy
 import logging
 import argparse
 import time
@@ -10,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 BRANCH_OUTPUT_FILENAME = './tests/branch_output.json'
 CUSTOMER_OUTPUT_FILENAME = './tests/customer_output.json'
+EVENTS_OUTPUT_FILENAME = './tests/event_output.json'
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -55,7 +57,39 @@ if __name__ == '__main__':
         fd.write(json.dumps(server_event_list))
         fd.close()
 
+    # collating the events_json from both processes
+    with open(CUSTOMER_OUTPUT_FILENAME, 'r') as customer_fd:
+        customer_events_list = json.loads(customer_fd.read())
+        customer_fd.close()
+    with open(BRANCH_OUTPUT_FILENAME, 'r') as branch_fd:
+        branch_events_list = json.loads(branch_fd.read())
+        branch_fd.close()
+
+    collated_events_list = []
+    for events in branch_events_list:
+        _id = events.get('id')
+        _type = events.get('type')
+        for event in events.get('events'):
+            temp_dict = copy.deepcopy(event)
+            temp_dict['id'] = _id
+            temp_dict['type'] = _type
+            collated_events_list.append(temp_dict)
+
+    for events in customer_events_list:
+        _id = events.get('id')
+        _type = events.get('type')
+        for event in events.get('events'):
+            temp_dict = copy.deepcopy(event)
+            temp_dict['id'] = _id
+            temp_dict['type'] = _type
+            collated_events_list.append(temp_dict)
+
+    with open(EVENTS_OUTPUT_FILENAME, 'w') as event_fd:
+        event_fd.write(json.dumps(collated_events_list))
+        event_fd.close()
+
     # for process in branch_processes:
     #    process.terminate()
-    logging.info(f"You can find the output for the customers in `{CUSTOMER_OUTPUT_FILENAME}` file in this directory "
-                 f"and the output for branches in `{BRANCH_OUTPUT_FILENAME}` in this directory.")
+    logging.info(f"You can find the output for the customers in `{CUSTOMER_OUTPUT_FILENAME}`,  "
+                 f"and the output for branches in `{BRANCH_OUTPUT_FILENAME}`, and the output for events in "
+                 f"{EVENTS_OUTPUT_FILENAME}")
