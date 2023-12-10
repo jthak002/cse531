@@ -9,8 +9,8 @@ from runCustomer import read_customer_json, create_customer_objects, execute_cus
 
 logger = logging.getLogger(__name__)
 
-BRANCH_OUTPUT_FILENAME = './tests/branch_output.json'
-CUSTOMER_OUTPUT_FILENAME = './tests/customer_output.json'
+BRANCH_OUTPUT_FILENAME = 'tests/project2/branch_output.json'
+CUSTOMER_OUTPUT_FILENAME = 'tests/project2/customer_output.json'
 EVENTS_OUTPUT_FILENAME = './tests/event_output.json'
 
 if __name__ == '__main__':
