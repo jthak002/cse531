@@ -137,17 +137,32 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
         :param context: -
         :return: example_pb2.CResponse Object Type
         """
+        if request.prev_writeset_id == 'NO_WRITE_YET' and self.last_writeset_id is None:
+            logger.info("This the first customer transaction - proceeding now")
+        elif request.prev_writeset_id != self.last_writeset_id:
+            while True:
+                logger.warning(f"CUSTOMER_ID {request.cust_id}for {request.interface} with {request.tran_id} PAUSED;"
+                           f"last_writeset_id:{self.last_writeset_id} != req.prev_writeset: {request.prev_writeset_id}")
+                if request.prev_writeset_id != self.last_writeset_id:
+                    break
+                else:
+                    time.sleep(2)
+                    continue
+        else:
+            logger.debug(f"Branch {self.id} is in sync for CUSTOMER_ID {request.cust_id} - proceeding now")
+            pass
+
         with self.lock:
             logging.info(f">>> Received a CUSTOMER request to {request.interface} for cust_id {request.cust_id} with "
                          f"tran_id {request.tran_id} at localtime {self.local_time}")
             self.compare_set_localtime(remote_clock=request.localtime)
             self.events.append({'customer-request-id': request.cust_id, 'logical_clock': self.local_time, 'interface':
                                 'query', 'comment': f'query_recv from {request.cust_id}'})
-        balance_str = 'balance: ' + str(self.balance)
+        balance_str = str(self.balance)
         logging.info(f"Returning a CUSTOMER response for {request.interface} for cust_id {request.cust_id} with "
                      f"tran_id {request.tran_id} as {balance_str}")
         return example_pb2.CResponse(cust_id=self.id, tran_id=request.tran_id, interface=request.interface,
-                                     result=balance_str)
+                                     result=balance_str, curr_writeset_id=self.last_writeset_id)
 
     def Deposit(self, request, context):
         """

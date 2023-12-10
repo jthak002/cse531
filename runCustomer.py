@@ -17,21 +17,23 @@ def read_customer_json(filepath: str):
     return input_tests
 
 
-def create_customer_objects(input_tests: dict):
+def create_customer_objects(input_tests: dict,  output_filepath:str):
     # list to store the details of every bank process
     customer_list = []
     logger.info("parsing & filtering the the list of customer initialization events in the input.json file")
     for input_test in input_tests:
         if input_test.get('type') == "customer":
-            customer_list.append(Customer(id=input_test.get('id'), events=input_test.get('customer-requests')))
+            customer_list.append(Customer(id=input_test.get('id'), events=input_test.get('events'),
+                                          outputPath=output_filepath))
     return customer_list
 
 
-def execute_customer_events(customer_list, output_filename:str):
+def execute_customer_events(customer_list):
     with Manager() as manager:
         response_list = manager.list()
         customer_process_list = []
         logger.info("creating and starting individual processes for each customer")
+        logger.debug(customer_list)
         try:
             for customer in customer_list:
                 customer.shared_list = response_list
@@ -50,11 +52,6 @@ def execute_customer_events(customer_list, output_filename:str):
         # -joining the execution of all the customer processes
         for customer_process in customer_process_list:
             customer_process.join()
-        # -gathering the output from all the process
-        final_responses = list(response_list)
-    with open(output_filename,'w') as customer_output:
-        customer_output.write(json.dumps(final_responses))
-        customer_output.close()
     return customer_list
 
 

@@ -9,9 +9,8 @@ from runCustomer import read_customer_json, create_customer_objects, execute_cus
 
 logger = logging.getLogger(__name__)
 
-BRANCH_OUTPUT_FILENAME = 'tests/project2/branch_output.json'
-CUSTOMER_OUTPUT_FILENAME = 'tests/project2/customer_output.json'
-EVENTS_OUTPUT_FILENAME = './tests/event_output.json'
+CUSTOMER_OUTPUT_FILEPATH = './tests/'
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -39,61 +38,8 @@ if __name__ == '__main__':
 
     logging.info("Setting up the customer events.")
     input_tests = read_customer_json(filepath=args.filepath)
-    customer_list = create_customer_objects(input_tests)
-    execute_customer_events(customer_list=customer_list, output_filename=CUSTOMER_OUTPUT_FILENAME)
-    time.sleep(10)
-    logging.info("Script execution is complete. Sending terminate signal to all of the Branch Processes")
-    # writing the server output to file.
-    server_event_list = []
-    for customer in customer_list:
-        status, response_dict = customer.branchTerminate()
-        if status:
-            logger.info(f"processed server events for branch {customer.id}")
-            server_event_list.append(response_dict)
-        else:
-            logger.error("Encountered error while parsing branch event output")
-            server_event_list.append(response_dict)
-    with open(BRANCH_OUTPUT_FILENAME, 'w') as fd:
-        fd.write(json.dumps(server_event_list))
-        fd.close()
+    customer_list = create_customer_objects(input_tests=input_tests, output_filepath=CUSTOMER_OUTPUT_FILEPATH)
+    execute_customer_events(customer_list=customer_list)
 
-    # collating the events_json from both processes
-    with open(CUSTOMER_OUTPUT_FILENAME, 'r') as customer_fd:
-        customer_events_list = json.loads(customer_fd.read())
-        customer_fd.close()
-    with open(BRANCH_OUTPUT_FILENAME, 'r') as branch_fd:
-        branch_events_list = json.loads(branch_fd.read())
-        branch_fd.close()
-
-    collated_events_list = []
-    for events in branch_events_list:
-        cust_id = events.get('id')
-        cust_type = events.get('type')
-        for event in events.get('events'):
-            temp_dict = copy.deepcopy(event)
-            temp_dict['id'] = cust_id
-            temp_dict['type'] = cust_type
-            collated_events_list.append(temp_dict)
-
-    for events in customer_events_list:
-        br_id = events.get('id')
-        br_type = events.get('type')
-        for event in events.get('events'):
-            temp_dict = copy.deepcopy(event)
-            temp_dict['id'] = br_id
-            temp_dict['type'] = br_type
-            collated_events_list.append(temp_dict)
-
-    # sorted_by_cust_id_and_logical_clock =
-    # sorted(collated_events_list, key=lambda x: (x['customer-request-id'], x['logical_clock']))
-
-    with open(EVENTS_OUTPUT_FILENAME, 'w') as event_fd:
-        event_fd.write(json.dumps(collated_events_list))
-        event_fd.close()
-
-
-    # for process in branch_processes:
-    #    process.terminate()
-    logging.info(f"You can find the output for the customers in `{CUSTOMER_OUTPUT_FILENAME}`,  "
-                 f"and the output for branches in `{BRANCH_OUTPUT_FILENAME}`, and the output for events in "
-                 f"{EVENTS_OUTPUT_FILENAME}")
+    logging.info(f"You can find the output for the customers in `{CUSTOMER_OUTPUT_FILEPATH}/customer_output.x.json` "
+                 f"where x is the customer ID.")
