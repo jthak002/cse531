@@ -1,4 +1,5 @@
 import sys
+import time
 import traceback
 from concurrent import futures
 import threading
@@ -7,6 +8,7 @@ import example_pb2
 import example_pb2_grpc
 import logging
 import json
+import uuid
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +26,7 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
     local_time = 0
     events = []
     lock = None
+    last_writeset_id = None
 
     def __init__(self, id, balance, branches):
         # unique ID of the Branch
@@ -84,7 +87,7 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
         return self.local_time
 
     def send_btransaction_message(self, cust_id: int, tran_id: int, src_branch_id, interface: str,
-                                  amount: float) -> bool:
+                                  amount: float, writeset_id: str ) -> bool:
         """
         Function to propagate deposit or withdraw from branch to peer branches
         :param cust_id: customer id of the account - right now the same as the account
@@ -92,6 +95,7 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
         :param src_branch_id: the id of the branch initiating the source transaction
         :param interface: either PROPAGATE_DEPOSIT or PROPAGATE_WITHDRAW
         :param amount: The amount to deposit or withdraw
+        :param writeset_id: The transaction uuid to propogate to other branches.
         :return: True if all nodes received the transaction properly, else False
         """
         for stub_dict in self.stubList:
@@ -102,18 +106,18 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
                                     'interface': interface.lower(), 'comment': f'event_sent to branch {peer_branch_id}'})
             logger.debug(f"SENDING BTransaction Message from {src_branch_id} to "
                          f"PEER_BANKID#{stub_dict.get('peer_id')} for cust_id{cust_id} with tran_id{tran_id} for "
-                         f"{interface} operation for amount{amount}")
+                         f"{interface} operation for amount{amount} with writeset_id={writeset_id}")
             if interface == "PROPAGATE_DEPOSIT":
                 response = stub_dict.get('stub').Propagate_Deposit(
                     example_pb2.BTransaction(cust_id=cust_id, tran_id=tran_id, src_branch_id=self.id,
                                              interface=interface, money=amount,
-                                             src_branch_localtime=fn_localtime))
+                                             src_branch_localtime=fn_localtime, writeset_id=writeset_id))
 
             elif interface == "PROPAGATE_WITHDRAW":
                 response = stub_dict.get('stub').Propagate_Withdraw(
                     example_pb2.BTransaction(cust_id=cust_id, tran_id=tran_id, src_branch_id=self.id,
                                              interface=interface, money=amount,
-                                             src_branch_localtime=fn_localtime))
+                                             src_branch_localtime=fn_localtime, writeset_id=writeset_id))
             else:
                 logger.critical("INVALID INTERFACE in Branch.send_btransaction_message() - exiting now")
                 exit(1)
@@ -152,24 +156,42 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
         :param context: -
         :return: example_pb2.CResponse Object Type
         """
+        if request.prev_writeset_id == 'NO_WRITE_YET' and self.last_writeset_id is None:
+            logger.info("This the first customer transaction - proceeding now")
+        elif request.prev_writeset_id != self.last_writeset_id:
+            while True:
+                logger.warning(f"CUSTOMER_ID {request.cust_id}for {request.interface} with {request.tran_id} PAUSED;"
+                           f"last_writeset_id:{self.last_writeset_id} != req.prev_writeset: {request.prev_writeset_id}")
+                if request.prev_writeset_id != self.last_writeset_id:
+                    break
+                else:
+                    time.sleep(2)
+                    continue
+        else:
+            logger.debug(f"Branch {self.id} is in sync for CUSTOMER_ID {request.cust_id} - proceeding now")
+            pass
+
         with self.lock:
             deposit_amount = request.money
+            unique_id = str(uuid.uuid4())
             logging.info(f">>> Received a CUSTOMER request to {request.interface} for cust_id {request.cust_id} with "
-                         f"tran_id {request.tran_id} at localtime {self.local_time}")
+                         f"tran_id {request.tran_id} at localtime {self.local_time} with prev_writeset "
+                         f"{request.prev_writeset_id} - generating new writeset_id={str(unique_id)}")
             fn_localtime = self.compare_set_localtime(remote_clock=request.localtime)
-            self.events.append({'customer-request-id': request.cust_id, 'logical_clock': fn_localtime,
+            self.events.append({'id': request.cust_id, 'logical_clock': fn_localtime,
                                 'interface': 'deposit', 'comment': f'event_recv from customer {request.cust_id}'})
             self.balance += deposit_amount
         ###################################
         # CODE FOR PROPAGATING BALANCE HERE
         propagate_status = self.send_btransaction_message(cust_id=request.cust_id, tran_id=request.tran_id,
                                                           src_branch_id=self.id, interface='PROPAGATE_DEPOSIT',
-                                                          amount=request.money)
+                                                          amount=request.money, writeset_id=unique_id)
         ###################################
         if propagate_status:
             logger.debug(
                 f"BRANCH with ID#{self.id} has the balance INCREASED by {request.money} To BALANCE {self.balance} "
-                f"via CUSTOMER DEPOSIT with tran_id: {request.tran_id}")
+                f"via CUSTOMER DEPOSIT with tran_id: {request.tran_id} - writeset_id: {unique_id}")
+            self.last_writeset_id = unique_id
         else:
             logger.warning(f"DEPOSIT FAILED for ID#{self.id} with PROPAGATE DEPOSIT FAILURE")
         transaction_status: str = 'success' if propagate_status else 'failure'
@@ -177,7 +199,7 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
         logging.info(f"Returning a CUSTOMER response for {request.interface} for cust_id {request.cust_id} with "
                      f"tran_id {request.tran_id} as {transaction_status}")
         return example_pb2.CResponse(cust_id=self.id, tran_id=request.tran_id, interface=request.interface,
-                                     result=transaction_status)
+                                     result=transaction_status, curr_writeset_id=self.last_writeset_id)
 
     def Withdraw(self, request, context):
         """
@@ -186,10 +208,27 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
         :param context: -
         :return: example_pb2.CResponse Object Type
         """
+        if request.prev_writeset_id == 'NO_WRITE_YET' and self.last_writeset_id is None:
+            logger.info("This the first customer transaction - proceeding now")
+        elif request.prev_writeset_id != self.last_writeset_id:
+            while True:
+                logger.warning(f"CUSTOMER_ID {request.cust_id}for {request.interface} with {request.tran_id} PAUSED;"
+                           f"last_writeset_id:{self.last_writeset_id} != req.prev_writeset: {request.prev_writeset_id}")
+                if request.prev_writeset_id != self.last_writeset_id:
+                    break
+                else:
+                    time.sleep(2)
+                    continue
+        else:
+            logger.debug(f"Branch {self.id} is in sync for CUSTOMER_ID {request.cust_id} - proceeding now")
+            pass
+
         with self.lock:
             withdraw_amount = request.money
+            unique_id = str(uuid.uuid4())
             logging.info(f">>> Received a CUSTOMER request to {request.interface} for cust_id {request.cust_id} with "
-                         f"tran_id {request.tran_id} at localtime {self.local_time}")
+                         f"tran_id {request.tran_id} at localtime {self.local_time} with prev_writeset "
+                         f"{request.prev_writeset_id} - generating new writeset_id={str(unique_id)}")
             fn_localtime = self.compare_set_localtime(remote_clock=request.localtime)
             self.events.append({'customer-request-id': request.cust_id, 'logical_clock': fn_localtime,
                                 'interface': 'withdraw', 'comment': f'event_recv from customer {request.cust_id}'})
@@ -198,12 +237,13 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
         # CODE FOR PROPAGATING BALANCE HERE
         propagate_status = self.send_btransaction_message(cust_id=request.cust_id, tran_id=request.tran_id,
                                                           src_branch_id=self.id, interface='PROPAGATE_WITHDRAW',
-                                                          amount=request.money)
+                                                          amount=request.money, writeset_id=unique_id)
         ###################################
         if propagate_status:
             logger.debug(
                 f"BRANCH with ID#{self.id} has the balance DECREASED by {request.money} To BALANCE {self.balance} "
-                f"via CUSTOMER WITHDRAWAL with tran_id: {request.tran_id}")
+                f"via CUSTOMER WITHDRAWAL with tran_id: {request.tran_id} - writeset_id: {unique_id}")
+            self.last_writeset_id = unique_id
         else:
             logger.warning(f"WITHDRAWAL FAILED for ID#{self.id} with PROPAGATE WITHDRAW FAILURE")
         transaction_status: str = 'success' if propagate_status else 'failure'
@@ -211,7 +251,7 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
         logging.info(f"Returning a CUSTOMER response for {request.interface} for cust_id {request.cust_id} with "
                      f"tran_id {request.tran_id} as {transaction_status}")
         return example_pb2.CResponse(cust_id=self.id, tran_id=request.tran_id, interface=request.interface,
-                                     result=transaction_status)
+                                     result=transaction_status, curr_writeset_id=self.last_writeset_id)
 
     def Propagate_Deposit(self, request, context):
         """
@@ -223,7 +263,7 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
         with self.lock:
             deposit_amount = request.money
             logging.debug(f"Received a BRANCH DEPOSIT PROPAGATION request to {request.interface} for cust_id "
-                          f"{request.cust_id} with tran_id {request.tran_id}")
+                          f"{request.cust_id} with tran_id {request.tran_id} with writeset_id {request.writeset_id}")
             fn_localtime = self.compare_set_localtime(remote_clock=request.src_branch_localtime)
             self.events.append({'customer-request-id': request.cust_id, 'logical_clock': fn_localtime,
                                 'interface': 'propagate_deposit', 'comment': f'event_recv from branch '
@@ -232,11 +272,13 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
         transaction_status = True
         logger.info(f"BRANCH with ID#{self.id} has the balance INCREASED by {request.money} for {request.cust_id} To "
                     f"BALANCE {self.balance} via BRANCH DEPOSIT PROPAGATION from BRANCH_ID{request.src_branch_id} "
-                    f"with tran_id: {request.tran_id}")
+                    f"with tran_id: {request.tran_id} and writeset_id {request.writeset_id}")
+        self.last_writeset_id = request.writeset_id
         logging.debug(f"Returning a CUSTOMER response for {request.interface} for cust_id {request.cust_id} with "
                       f"tran_id {request.tran_id} with {transaction_status}")
         return example_pb2.BResponse(cust_id=self.id, tran_id=request.tran_id, interface=request.interface,
-                                     money=self.balance, status=transaction_status)
+                                     money=self.balance, status=transaction_status,
+                                     ack_writeset_id=self.last_writeset_id)
 
     def Propagate_Withdraw(self, request, context):
         """
@@ -248,7 +290,7 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
         with self.lock:
             withdraw_amount = request.money
             logging.debug(f"Received a BRANCH WITHDRAWAL PROPAGATION request to {request.interface} for cust_id "
-                          f"{request.cust_id} with tran_id {request.tran_id}")
+                          f"{request.cust_id} with tran_id {request.tran_id}with writeset_id {request.writeset_id}")
             fn_localtime = self.compare_set_localtime(remote_clock=request.src_branch_localtime)
             self.events.append({'customer-request-id': request.cust_id, 'logical_clock': fn_localtime,
                                 'interface': 'propagate_withdraw', 'comment': f'event_recv from branch '
@@ -256,11 +298,12 @@ class Branch(example_pb2_grpc.CustomerTransactionServicer):
             self.balance -= withdraw_amount
         logger.info(f"BRANCH with ID#{self.id} has the balance DECREASED by {request.money} for cust_id "
                     f"{request.cust_id} To BALANCE {self.balance} via BRANCH WITHDRAW PROPAGATION from "
-                    f"BRANCH_ID{request.src_branch_id} with tran_id: {request.tran_id}")
+                    f"BRANCH_ID{request.src_branch_id} with tran_id: {request.tran_id}and writeset_id {request.writeset_id}")
+        self.last_writeset_id = request.writeset_id
         logging.debug(f"Returning a BRANCH WITHDRAW PROPAGATION response for {request.interface} for cust_id "
                       f"{request.cust_id} with tran_id {request.tran_id} with status {True}")
         return example_pb2.BResponse(cust_id=self.id, tran_id=request.tran_id, interface=request.interface,
-                                     money=self.balance, status=True)
+                                     money=self.balance, status=True, ack_writeset_id=self.last_writeset_id)
 
     def Terminate(self, request, context):
         """

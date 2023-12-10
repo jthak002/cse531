@@ -34,7 +34,6 @@ def execute_customer_events(customer_list, output_filename:str):
         logger.info("creating and starting individual processes for each customer")
         try:
             for customer in customer_list:
-                customer.createStub()
                 customer.shared_list = response_list
                 process = Process(target=customer.executeEvents)
                 customer_process_list.append(process)
