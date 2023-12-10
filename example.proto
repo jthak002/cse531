@@ -28,6 +28,7 @@ message CTransaction {
     string interface = 3;
     float money = 4;
     int64 localtime = 5;
+    string prev_writeset_id = 6;
 }
 
 message CResponse {
@@ -35,6 +36,7 @@ message CResponse {
     int32 tran_id = 2;
     string interface = 3;
     string result = 4;
+    string curr_writeset_id = 5;
 }
 
 
@@ -45,6 +47,7 @@ message BTransaction {
     string interface = 4;
     float money = 5;
     int64 src_branch_localtime = 6;
+    string writeset_id = 7;
 }
 
 message BResponse {
@@ -53,6 +56,7 @@ message BResponse {
     string interface = 3;
     float money = 4;
     bool status = 5;
+    string ack_writeset_id = 6;
 }
 
 message Bterminate {
